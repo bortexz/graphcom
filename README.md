@@ -1,8 +1,14 @@
 # graphcom
+![Clojars Project](https://img.shields.io/clojars/v/io.github.bortexz/graphcom.svg)
 
 Directed acyclic graph computations for Clojure.
 
 ## Install
+
+### Clojure CLI/deps.edn
+```clojure
+io.github.bortexz/graphcom {:mvn/version "0.0.1"}
+```
 
 ## Quick Example
 You can find the namespace for this example [here](./examples/quick_example.clj) 
