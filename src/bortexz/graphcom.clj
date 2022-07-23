@@ -29,14 +29,14 @@
 
 (defprotocol Processor
   "Compiles and processes a graph context for the given inputs."
-  (-compile [this graph inputs]
-    "Creates a compilation to traverse the `graph` for the given `input` set.
+  (-compile [this graph input-set]
+    "Creates a compilation to traverse the `graph` for the given `input-set` (set of input-nodes ids).
      The result will be passed to -process as `compilation`.")
   (-process [this graph compilation values inputs-map]
     "Processes the `graph` traversing the given `compilation`, 
      using the current `values` of the context and the given 
-     `inputs-map` as {input-id value}. Returns the new values
-     of the context."))
+     `inputs-map` as {<input-id> <value>}. Returns the new values
+     of the context as {<compute-id> <value>}."))
 
 (defn node?
   "Checks if x is any type of graph node"
@@ -93,7 +93,7 @@
   "Adds `node` to `graph` with the given `label`.
    Recursively adds all sources of `node` that do not exist yet on `graph`, without label."
   [graph label node]
-  (assert (node? node) "Node must be either an input node or a compute node.")
+  (assert (node? node) "node must satisty the Node protocol")
   (assert (not (get (:labels graph) label)) "A node already exists with this label.")
   (let [id (-id node)
         graph (-> graph
