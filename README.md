@@ -143,7 +143,8 @@ The context glues the graph with a specific processor, the current values, and p
 ;; (faster than (-> (g/values context) label) )
 (g/value context label) 
 
-;; Adds a compilation to context to process graph when :input1 and :input2 are specified in `process`. If a compilation doesn't exist for the input set when executing `process`, it will be added automatically and stored in the context for future `process` calls.
+;; Adds a compilation to context to process graph when :input1 and :input2 are specified in `process`. 
+;; If a compilation doesn't exist for the input set when executing `process`, it will be added automatically and stored in the context for future `process` calls.
 (g/precompile context #{:input1 :input2}) 
 
 ```
