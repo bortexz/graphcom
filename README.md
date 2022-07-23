@@ -156,7 +156,7 @@ All nodes implement the g/Node protocol:
 
 ```clojure
 (defprotocol Node
-  (-id [this] "Returns id of node. Must be unique inside a graph.))
+  (-id [this] "Returns id of node. Must be unique inside a graph."))
 ```
 
 Nodes created with `g/input-node` or `g/compute-node` have an id randomly created.
