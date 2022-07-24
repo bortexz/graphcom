@@ -94,6 +94,7 @@ A node that has dependencies on other nodes, and computes it's value from its so
 (g/compute-node {:a-source a-source-node}
                 (fn [current-value {:keys [a-source] :as _sources-values}]
                   ;; Return new value of this node,
+                  ;; current-value contains the previously computed value of this node
                   ;; a-source contains the current value of a-source-node
                   ))
 ```
