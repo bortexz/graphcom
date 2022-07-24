@@ -1,7 +1,9 @@
 # graphcom
 ![Clojars Project](https://img.shields.io/clojars/v/io.github.bortexz/graphcom.svg)
 
-Directed acyclic graph computations for Clojure.
+Dependency graph computations for Clojure, for building composable computations that depend on other computations. It will store the value of each computation node, and feed it into the next computation.
+
+Use case:  Rolling moving averages over timeseries where you only want to calculate the latest value added, but keep up to N latest values to be used to calculate the next value (e.g Exponential moving averages depend on their previous values), or be used in downstream computations.
 
 ## Install
 
