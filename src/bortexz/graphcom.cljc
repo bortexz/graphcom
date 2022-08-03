@@ -166,8 +166,7 @@
 (defn -base-compilation
   "Base compilation used by sequential and parallel processors. 
    When parallel? is false, the topology is flattened to be 1-dimensional.
-   When no inputs specified, it will create a compilation for all input nodes of the graph.
-   Throws when any input does not exist as input of the graph."
+   When no inputs specified, it will create a compilation for all input nodes of the graph."
   ([graph parallel?]
    (-base-compilation graph (input-ids graph) parallel?))
   ([graph input-ids parallel?]

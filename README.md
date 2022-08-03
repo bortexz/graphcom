@@ -1,5 +1,5 @@
 # graphcom
-![Clojars Project](https://img.shields.io/clojars/v/io.github.bortexz/graphcom.svg)
+![Clojars Project](https://img.shields.io/clojars/v/io.github.bortexz/graphcom.svg) ![Cljdoc badge](https://cljdoc.org/badge/io.github.bortexz/graphcom)
 
 Dependency graph computations for Clojure(Script). Build composable computations as nodes of a graph, that can depend on other nodes of the graph as their inputs. You can also refeed the previous graph result into the next computation, allowing nodes to use their previously calculated values on next computation.
 
