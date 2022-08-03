@@ -26,3 +26,4 @@
 /classes
 /target
 .portal
+cljs-test-runner-out/

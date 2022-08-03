@@ -10,7 +10,8 @@
 (def version (:version release))
 
 (defn test "Run the tests." [opts]
-  (bb/run-tests opts))
+  (bb/run-tests opts)
+  (bb/run-tests (assoc opts :aliases [:cljs-test])))
 
 (defn ci "Run the CI pipeline of tests (and build the JAR)." [opts]
   (-> opts

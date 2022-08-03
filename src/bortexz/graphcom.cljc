@@ -254,28 +254,28 @@
                 node-value (-compute node (get -values node-id) (-sources-values node -values inputs))]
             (recur (assoc! -values node-id node-value)
                    (pop remaining))))))))
-
-(defn parallel-processor
-  "Only CLJ: Returns a parallel processor that will execute each parallel step of the topological sort using pmap."
-  []
-  (reify Processor
-    (-compile [_ graph input-ids] (-base-compilation graph input-ids true))
-    (-process [_ {:keys [nodes]} compilation values inputs]
-      (loop [-values values
-             remaining (queue compilation)]
-        (if-not (seq remaining)
-          -values
-          (let [node-ids (peek remaining)
-                node-values (into {} (pmap
-                                      (fn [id]
-                                        (let [node (get nodes id)
-                                              handler (:handler node)
-                                              node-value (handler (get -values id)
-                                                                  (-sources-values node -values inputs))]
-                                          [id node-value]))
-                                      node-ids))]
-            (recur (merge -values node-values)
-                   (pop remaining))))))))
+#?(:clj
+   (defn parallel-processor
+     "Only CLJ: Returns a parallel processor that will execute each parallel step of the topological sort using pmap."
+     []
+     (reify Processor
+       (-compile [_ graph input-ids] (-base-compilation graph input-ids true))
+       (-process [_ {:keys [nodes]} compilation values inputs]
+         (loop [-values values
+                remaining (queue compilation)]
+           (if-not (seq remaining)
+             -values
+             (let [node-ids (peek remaining)
+                   node-values (into {} (pmap
+                                         (fn [id]
+                                           (let [node (get nodes id)
+                                                 handler (:handler node)
+                                                 node-value (handler (get -values id)
+                                                                     (-sources-values node -values inputs))]
+                                             [id node-value]))
+                                         node-ids))]
+               (recur (merge -values node-values)
+                      (pop remaining)))))))))
 
 (defn context
   "Returns a context to execute the given `graph` with `processor`.

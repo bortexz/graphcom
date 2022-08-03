@@ -68,4 +68,4 @@
 (deftest processor
   (testing "Sequential processor"
     (test-processor (g/sequential-processor))
-    (test-processor (g/parallel-processor))))
+    #?(:clj (test-processor (g/parallel-processor)))))
