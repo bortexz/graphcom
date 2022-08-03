@@ -1,25 +1,23 @@
-name: Release Version
-
-on:
-  push:
-    tags:
-      - "v*"
+name: Tag and Release
+on: workflow_dispatch
 
 jobs:
-  build-and-release:
+  tag-and-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
       - uses: actions/setup-java@v2
         with:
           distribution: 'adopt'
           java-version: '11'
-      - name: Setup Clojure
-        uses: DeLaGuardo/setup-clojure@master
+
+      - uses: DeLaGuardo/setup-clojure@master
         with:
-          cli: '1.10.3.1053'
+          cli: latest
+
       - name: Cache All The Things
         uses: actions/cache@v3
         with:
@@ -29,10 +27,23 @@ jobs:
             ~/.clojure
             ~/.cpcache
           key: ${{ runner.os }}-${{ hashFiles('**/deps.edn') }}
+
       - name: Run Tests
         run: clojure -T:build ci
+
       - name: Deploy Release
+        id: deploy
         run: clojure -T:build deploy
         env:
-          CLOJARS_PASSWORD: ${{secrets.DEPLOY_TOKEN}}
-          CLOJARS_USERNAME: ${{secrets.DEPLOY_USERNAME}}
+          CLOJARS_PASSWORD: ${{secrets.CLOJARS_PASSWORD}}
+          CLOJARS_USERNAME: ${{secrets.CLOJARS_USERNAME}}
+
+      - uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.deploy.outputs.version }}
+          release_name: v${{ steps.deploy.outputs.version }}
+          body: Release v${{ steps.deploy.outputs.version }}
+          draft: false
+          prerelease: false

@@ -1,15 +1,20 @@
 # graphcom
 ![Clojars Project](https://img.shields.io/clojars/v/io.github.bortexz/graphcom.svg)
 
-Dependency graph computations for Clojure, for building composable computations that depend on other computations. It will store the value of each computation node, and feed it into the next computation.
+Dependency graph computations for Clojure(Script). Build composable computations as nodes of a graph, that can depend on other nodes of the graph as their inputs. You can also refeed the previous graph result into the next computation, allowing nodes to use their previously calculated values on next computation.
 
-Use case:  Rolling moving averages over timeseries where you only want to calculate the latest value added, but keep up to N latest values to be used to calculate the next value (e.g Exponential moving averages depend on their previous values), or be used in downstream computations.
+Example use case:  Rolling moving averages over timeseries where you only want to calculate the latest value added, but keep up to N latest values to be used to calculate the next value (e.g Exponential moving averages depend on their previous values), or be used in downstream computations.
 
 ## Install
 
 ### Clojure CLI/deps.edn
 ```clojure
-io.github.bortexz/graphcom {:mvn/version "0.0.1"}
+io.github.bortexz/graphcom {:mvn/version "0.1.0"}
+```
+
+### Leiningen/Boot
+```clojure
+[io.github.bortexz/graphcom "0.0.1"]
 ```
 
 ## Quick Example
