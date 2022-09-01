@@ -14,7 +14,7 @@ io.github.bortexz/graphcom {:mvn/version "0.1.0"}
 
 ### Leiningen/Boot
 ```clojure
-[io.github.bortexz/graphcom "0.0.1"]
+[io.github.bortexz/graphcom "0.1.0"]
 ```
 
 ## Quick Example
