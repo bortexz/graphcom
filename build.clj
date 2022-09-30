@@ -5,7 +5,7 @@
             [org.corfield.build :as bb]))
 
 (def lib 'io.github.bortexz/graphcom)
-(def version "0.1.0")
+(def version "0.1.1")
 
 (defn- gha-output
   [k v]

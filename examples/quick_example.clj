@@ -1,56 +1,44 @@
 (ns quick-example
   (:require [bortexz.graphcom :as g]))
 
-(defn latest-n-vals-node
-  "Node that will emit as value latest up to n numbers received from input"
-  [input n]
+(defn incremental-timeseries
+  "Node that accumulates new timestamp values into a sorted-map up to max-size items."
+  [input max-size]
   (g/compute-node
    {:input input}
-   (fn [val {:keys [input]}]
-     (vec (take-last n (conj (or val []) input))))))
+   (fn [sc {:keys [input]}]
+     (into (sorted-map) (take-last max-size (merge (or sc (sorted-map)) input))))))
 
-(defn sum-values-node
-  "Node that sums all values received"
-  [vals-node]
+(defn moving-average
+  "Node that computes a moving average of timseries node `source` with given `period`, only for the timestamps
+   specified in `input`."
+  [source input period]
   (g/compute-node
-   {:vals vals-node}
-   (fn [_ {:keys [vals]}]
-     (reduce + 0 vals))))
+   {:input input
+    :source source}
+   (fn [ma {:keys [input source]}]
+     (let [new-timestamps (keys input)]
+       (reduce (fn [acc ts]
+                 (let [src-tail  (->> (subseq source <= ts)
+                                      (map val)
+                                      (take-last period))
+                       tail-size (count src-tail)]
+                   (if (>= tail-size period)
+                     (assoc acc ts (/ (reduce + 0 src-tail) tail-size))
+                     acc)))
+               (or ma (sorted-map))
+               new-timestamps)))))
 
-(defn mean-node
-  "Node that computes the mean of the numbers of numbers-node"
-  [numbers-node]
-  (g/compute-node 
-   {:numbers numbers-node
-    :summed (sum-values-node numbers-node)}
-   (fn [_ {:keys [numbers summed]}]
-     (/ summed (count numbers)))))
+(let [input (g/input-node)
+      timeseries (incremental-timeseries input 10)
+      moving-avg (moving-average timeseries input 3)
 
-(let [;; Node to introduce new values into the computation
-      latest-val (g/input-node)
-
-      ;; Node that returns latest 2 values introduced from latest-val
-      latest-2   (latest-n-vals-node latest-val 2)
-
-      ;; Node that computes the mean of values
-      mean-node  (mean-node latest-2)
-
-      ;; Only nodes we are interested need to be labeled when creating the graph, 
-      ;; either to input a value or to retrieve their value.
-      ;; Intermediary hidden nodes are recursively added without label
-      graph      (g/graph {:latest-val latest-val :mean mean-node})
-
-      ;; A graph needs to be wrapped in a context to be executed
-      ctx        (g/context graph)]
-  
-  [(-> ctx
-       (g/process {:latest-val 3})
-       (g/process {:latest-val 7})
-       (g/process {:latest-val 9})
-       (g/value :mean)) ; => 8
-
-   ; Immutable context 
-   (-> ctx
-       (g/process {:latest-val 3})
-       (g/value :mean))] ; => 3
-  ) ; => [8 3]
+      ctx (g/context
+            ; We label the needed nodes on the graph, to use them to introduce new values or retrieve their value from
+            ; the context.
+            (g/graph {:input input
+                      :avg moving-avg}))]
+  (-> ctx
+      (g/process {:input (sorted-map 1 1 2 2)})
+      (g/process {:input (sorted-map 3 3 4 4)})
+      (g/values))) ; => {:input nil, :avg {3 2, 4 3}} ; Inputs do not store their value.

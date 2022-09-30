@@ -1,85 +1,90 @@
 # graphcom
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.bortexz/graphcom.svg)](https://clojars.org/io.github.bortexz/graphcom) [![Cljdoc badge](https://cljdoc.org/badge/io.github.bortexz/graphcom)](https://cljdoc.org/d/io.github.bortexz/graphcom)
 
-Dependency graph computations for Clojure(Script). Build composable computations as nodes of a graph, that can depend on other nodes of the graph as their inputs. You can also refeed the previous graph result into the next computation, allowing nodes to use their previously calculated values on next computation.
+Composable incremental computations engine for Clojure(Script).
 
-Example use case:  Rolling moving averages over timeseries where you only want to calculate the latest value added, but keep up to N latest values to be used to calculate the next value (e.g Exponential moving averages depend on their previous values), or be used in downstream computations.
+## Rationale
+
+A **computation**, as described on Wikipedia, can be thought as any type of arithmetic or non-arithmetic calculation that follows a well-defined model (e.g., an algorithm). In Clojure, one might define a computation as a pure function that given a set of inputs, returns a specific output.
+
+An **incremental** computation is a kind of computation that uses it's previous output as one of the inputs when new data is available. Thus, the accumulated output needs to be 'stored' to be used on each iteration. It can also be thought as a 'stateful' computation. Normally, one could store the output outside the function and pass it around as an argument along the new inputs, to keep the function pure and without side effects.
+
+This approach works well for independent and scattered computations, but falls short when making these computations **composable** with each other (i.e the output of a computation is the input for another). When a computation is used as the input for many other, we want to ensure that it's output is only calculated once, and used on every dependant. We also want to be able to access the outputs (also called **values**) of intermediary computations. 
+
+To achieve the above, we make the **directed acyclic graph** of computations explicit, by defining each computation in a **compute-node**, and using **input-node**s to introduce new values into the graph. Each **compute-node** has sources, a map of other nodes it depends upon, as well as a **handler**, a function accepting the value calculated on the previous iteration, and a map of inputs containing the currently calculated value for each source.
+
+A **graph** only contains the nodes and it's relationship (an adjacency map), and needs to be wrapped within a **context** to be executed. A context contains a graph, as well as the accumulated values for all nodes in the graph, and compilations of the graph to be traversed by the **processor** to compute new values. This **context** is also immutable, and each time the context is processed with new inputs, returns a new context containing the new values of the graph. This allows the context to be thread-safe, containing a snapshot of computed values, and can be queried and processed by different threads (e.g speculative computations of future inputs).
+
+**Processors** are responsible of compiling and traversing the graph in the correct order and calling the compute node's handlers appropiately acumulating the new context values. By allowing customization of the topological compiling and traversing of the graph, we can build different processors adapted by use case. As an example, two different processor implementations are offered: A sequential one that traverses a flattened topological sort, and a parallel one that computes nodes at the same depth level in the graph in parallel using pmap.
+
+With this, we have achieved a very similar ergonomics to the described in the **incremental** paragraph; we call a function that accepts a **context** (new or previosly computed value) and a new **set of inputs**, and returns an updated context, to be used on further iterations, in a pure way.
+
+## Use case
+
+The main motivation for building graphcom was to serve as the computation engine for [tacos](https://github.com/bortexz/tacos), a library of timeseries technical indicators that are incrementally computed with each new data point, each node keeping it's own accumulated timeseries. Having it extracted into a library instead of a utility inside tacos has other advantages, as indicators can be composed with other types of computations that might not be timeseries-related, or are outside the scope of tacos.
 
 ## Install
 
 ### Clojure CLI/deps.edn
 ```clojure
-io.github.bortexz/graphcom {:mvn/version "0.1.0"}
+io.github.bortexz/graphcom {:mvn/version "0.1.1"}
 ```
 
 ### Leiningen/Boot
 ```clojure
-[io.github.bortexz/graphcom "0.1.0"]
+[io.github.bortexz/graphcom "0.1.1"]
 ```
 
 ## Quick Example
-You can find the namespace for this example [here](./examples/quick_example.clj) 
+You can find the namespace for this example [here](./examples/quick_example.clj). 
 
 ```clojure
 (ns quick-example
   (:require [bortexz.graphcom :as g]))
 
-(defn latest-n-vals-node
-  "Node that will emit as value latest up to n numbers received from input"
-  [input n]
+(defn incremental-timeseries
+  "Node that accumulates new timestamp values into a sorted-map up to max-size items."
+  [input max-size]
   (g/compute-node
    {:input input}
-   (fn [val {:keys [input]}]
-     (vec (take-last n (conj (or val []) input))))))
+   (fn [sc {:keys [input]}]
+     (into (sorted-map) (take-last max-size (merge (or sc (sorted-map)) input))))))
 
-(defn sum-values-node
-  "Node that sums all values received"
-  [vals-node]
+(defn moving-average
+  "Node that computes a moving average of timseries node `source` with given `period`, only for the timestamps specified in `input`."
+  [source input period]
   (g/compute-node
-   {:vals vals-node}
-   (fn [_ {:keys [vals]}]
-     (reduce + 0 vals))))
+   {:input input
+    :source source}
+   (fn [ma {:keys [input source]}]
+     (let [new-timestamps (keys input)]
+       (reduce (fn [acc ts]
+                 (let [src-tail  (->> (subseq source <= ts)
+                                      (map val)
+                                      (take-last period))
+                       tail-size (count src-tail)]
+                   (if (>= tail-size period)
+                     (assoc acc ts (/ (reduce + 0 src-tail) tail-size))
+                     acc)))
+               (or ma (sorted-map))
+               new-timestamps)))))
 
-(defn mean-node
-  "Node that computes the mean of the numbers of numbers-node"
-  [numbers-node]
-  (g/compute-node 
-   {:numbers numbers-node
-    :summed (sum-values-node numbers-node)}
-   (fn [_ {:keys [numbers summed]}]
-     (/ summed (count numbers)))))
+(let [input (g/input-node)
+      timeseries (incremental-timeseries input 10)
+      moving-avg (moving-average timeseries input 3)
 
-(let [;; Node to introduce new values into the computation
-      latest-val (g/input-node)
-
-      ;; Node that returns latest 2 values introduced from latest-val
-      latest-2   (latest-n-vals-node latest-val 2)
-
-      ;; Node that computes the mean of values
-      mean-node  (mean-node latest-2)
-
-      ;; Only nodes we are interested need to be labeled when creating the graph, 
-      ;; either to input a value or to retrieve their value.
-      ;; Intermediary hidden nodes are recursively added without label
-      graph      (g/graph {:latest-val latest-val :mean mean-node})
-
-      ;; A graph needs to be wrapped in a context to be executed
-      ctx        (g/context graph)]
-  
-  [(-> ctx
-       (g/process {:latest-val 3})
-       (g/process {:latest-val 7})
-       (g/process {:latest-val 9})
-       (g/value :mean)) ; => 8
-
-   ; Immutable context 
-   (-> ctx
-       (g/process {:latest-val 3})
-       (g/value :mean))] ; => 3
-  ) ; => [8 3]
+      ctx (g/context
+            (g/graph {:input input
+                      :avg moving-avg}))]
+  (-> ctx
+      (g/process {:input (sorted-map 1 1 2 2)})
+      (g/process {:input (sorted-map 3 3 4 4)})
+      (g/values))) 
+      
+; => {:input nil, :avg {3 2, 4 3}} ; Inputs do not store their value
 ```
 
-## Concepts
+## Detailed usage
 ### **Node**
 A node of the graph. Nodes can be sources (dependencies) of other nodes when building the graph.
 
