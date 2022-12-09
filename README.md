@@ -128,7 +128,7 @@ When adding a node to a graph with a label, all sources are also added recursive
 
 ```
 
-### **Processor**
+## **Processor**
 To be able to execute a graph, we need a graph processor. Two default processors are offered:
 
 ```clojure
@@ -161,6 +161,12 @@ The context glues the graph with a specific processor, the current values, and p
 (g/precompile context #{:input1 :input2}) 
 
 ```
+
+### **Error handling**
+When a node throws an exception, this exception is wrapped in an ex-info whose data contains `paths`, a set of vectors each one representing a path from a labelled node going upwards the tree of sources until the failing node. 
+
+- If a labelled node throws exception, paths = `#{[<label>]}`
+- If an internal node throws exception, paths = `#{[<labelled-dependant> <source-label> ...<source-label>]}`
 
 
 ## Custom nodes

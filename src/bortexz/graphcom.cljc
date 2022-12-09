@@ -1,6 +1,7 @@
 (ns bortexz.graphcom
   (:refer-clojure :exclude [random-uuid])
-  (:require [medley.core :refer [queue random-uuid map-keys map-vals]]))
+  (:require [medley.core :refer [queue random-uuid map-keys map-vals]]
+            [clojure.set :as set]))
 
 (defprotocol Node
   (-id [this] "Returns id of this node. ID must be unique on a graph."))
@@ -74,6 +75,25 @@
                        (map key)
                        (into #{}))]))
        (into {})))
+
+(defn- labelled-paths
+  [{ls :labels src-map :adjacency-map nodes :nodes} node-id]
+  (let [id->label (set/map-invert ls)
+        sink-map (reverse-adjacency-map src-map)
+        get-paths (fn -get-paths [path nid]
+                    (if-let [l (id->label nid)]
+                      [(vec (conj path l))]
+                      (let [sinks (get sink-map nid)]
+                        (set
+                         (mapcat
+                          (fn [sink-id]
+                            (let [sink-sources (-sources (get nodes sink-id))
+                                  sink-label (get (set/map-invert
+                                                   (map-vals -id sink-sources))
+                                                  nid)]
+                              (-get-paths (conj path sink-label) sink-id)))
+                          sinks)))))]
+    (get-paths (list) node-id)))
 
 (defn- add-recursive
   [{:keys [nodes] :as graph} node]
@@ -238,19 +258,31 @@
         new-values (-process processor graph compilation values input-map)]
     (assoc context :values new-values)))
 
+(defn -process-node
+  "Processor impl: processes a single node on a graph with given accumulated values and inputs from processor process.
+   If node throws exception, wraps the exception in ex-info containing `paths`."
+  [graph node values inputs]
+  (try (-compute node
+                 (get values (-id node))
+                 (-sources-values node values inputs))
+       (catch Exception e 
+         (throw (ex-info "Exception computing node"
+                         {:paths (labelled-paths graph (-id node))}
+                         e)))))
+
 (defn sequential-processor
   "Returns a sequential processor that processes nodes sequentially."
   []
   (reify Processor
     (-compile [_ graph input-ids] (-base-compilation graph input-ids false))
-    (-process [_ {:keys [nodes]} compilation values inputs]
+    (-process [_ {:keys [nodes] :as g} compilation values inputs]
       (loop [-values (transient values)
              remaining (queue compilation)]
         (if (empty? remaining)
           (persistent! -values)
           (let [node-id (peek remaining)
                 node (get nodes node-id)
-                node-value (-compute node (get -values node-id) (-sources-values node -values inputs))]
+                node-value (-process-node g node -values inputs)]
             (recur (assoc! -values node-id node-value)
                    (pop remaining))))))))
 #?(:clj
@@ -259,7 +291,7 @@
      []
      (reify Processor
        (-compile [_ graph input-ids] (-base-compilation graph input-ids true))
-       (-process [_ {:keys [nodes]} compilation values inputs]
+       (-process [_ {:keys [nodes] :as g} compilation values inputs]
          (loop [-values values
                 remaining (queue compilation)]
            (if-not (seq remaining)
@@ -268,9 +300,7 @@
                    node-values (into {} (pmap
                                          (fn [id]
                                            (let [node (get nodes id)
-                                                 handler (:handler node)
-                                                 node-value (handler (get -values id)
-                                                                     (-sources-values node -values inputs))]
+                                                 node-value (-process-node g node -values inputs)]
                                              [id node-value]))
                                          node-ids))]
                (recur (merge -values node-values)

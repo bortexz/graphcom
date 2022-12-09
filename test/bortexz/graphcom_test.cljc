@@ -63,7 +63,20 @@
       (let [processed (-> context
                           (g/process {:input1 10 :input2 10}))]
         (is (nil? (g/value processed :input1)))
-        (is (nil? (:input1 (g/values processed))))))))
+        (is (nil? (:input1 (g/values processed))))))
+
+    (testing "Exception paths is correct"
+      (let [i (g/input-node)
+            c (g/compute-node {:input i} (fn [_ _] (throw (Exception. ""))))
+            c1 (g/compute-node {:source c} (fn [_ _]))
+            c2 (g/compute-node {:source c} (fn [_ _]))
+            c3 (g/compute-node {:c1 c1 :c2 c2} (fn [_ _]))
+            ctx (g/context (g/graph {:input i :compute c3}))
+            ex-paths (try (g/process ctx {:input true})
+                          (catch Exception e
+                            (:paths (ex-data e))))]
+        (is (true? (contains? ex-paths [:compute :c1 :source])))
+        (is (true? (contains? ex-paths [:compute :c2 :source])))))))
 
 (deftest processor
   (testing "Sequential processor"

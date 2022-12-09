@@ -1,11 +1,9 @@
 (ns build
   (:refer-clojure :exclude [test])
-  (:require [clojure.tools.build.api :as b] ; for b/git-count-revs
-            [clojure.edn :as edn]
-            [org.corfield.build :as bb]))
+  (:require [org.corfield.build :as bb]))
 
 (def lib 'io.github.bortexz/graphcom)
-(def version "0.1.1")
+(def version "0.2.0")
 
 (defn- gha-output
   [k v]
