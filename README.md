@@ -7,13 +7,13 @@ Composable incremental computations engine for Clojure(Script).
 
 A **computation**, as described on Wikipedia, can be thought as any type of arithmetic or non-arithmetic calculation that follows a well-defined model (e.g., an algorithm). In Clojure, one might define a computation as a pure function that given a set of inputs, returns a specific output.
 
-An **incremental** computation is a kind of computation that uses it's previous output as one of the inputs when new data is available. Thus, the accumulated output needs to be 'stored' to be used on each iteration. It can also be thought as a 'stateful' computation. Normally, one could store the output outside the function and pass it around as an argument along the new inputs, to keep the function pure and without side effects.
+An **incremental** computation is a kind of computation that uses its previous output as one of the inputs when new data is available. Thus, the accumulated output needs to be 'stored' to be used on each iteration. It can also be thought as a 'stateful' computation. Normally, one could store the output outside the function and pass it around as an argument along the new inputs, to keep the function pure and without side effects.
 
-This approach works well for independent and scattered computations, but falls short when making these computations **composable** with each other (i.e the output of a computation is the input for another). When a computation is used as the input for many other, we want to ensure that it's output is only calculated once, and used on every dependant. We also want to be able to access the outputs (also called **values**) of intermediary computations. 
+This approach works well for independent and scattered computations, but falls short when making these computations **composable** with each other (i.e the output of a computation is the input for another). When a computation is used as the input for many other, we want to ensure that its output is only calculated once, and used on every dependant. We also want to be able to access the outputs (also called **values**) of intermediary computations. 
 
 To achieve the above, we make the **directed acyclic graph** of computations explicit, by defining each computation in a **compute-node**, and using **input-node**s to introduce new values into the graph. Each **compute-node** has sources, a map of other nodes it depends upon, as well as a **handler**, a function accepting the value calculated on the previous iteration, and a map of inputs containing the currently calculated value for each source.
 
-A **graph** only contains the nodes and it's relationship (an adjacency map), and needs to be wrapped within a **context** to be executed. A context contains a graph, as well as the accumulated values for all nodes in the graph, and compilations of the graph to be traversed by the **processor** to compute new values. This **context** is also immutable, and each time the context is processed with new inputs, returns a new context containing the new values of the graph. This allows the context to be thread-safe, containing a snapshot of computed values, and can be queried and processed by different threads (e.g speculative computations of future inputs).
+A **graph** only contains the nodes and its relationship (an adjacency map), and needs to be wrapped within a **context** to be executed. A context contains a graph, as well as the accumulated values for all nodes in the graph, and compilations of the graph to be traversed by the **processor** to compute new values. This **context** is also immutable, and each time the context is processed with new inputs, returns a new context containing the new values of the graph. This allows the context to be thread-safe, containing a snapshot of computed values, and can be queried and processed by different threads (e.g speculative computations of future inputs).
 
 **Processors** are responsible of compiling and traversing the graph in the correct order and calling the compute node's handlers appropiately acumulating the new context values. By allowing customization of the topological compiling and traversing of the graph, we can build different processors adapted by use case. As an example, two different processor implementations are offered: A sequential one that traverses a flattened topological sort, and a parallel one that computes nodes at the same depth level in the graph in parallel using pmap.
 
@@ -21,7 +21,7 @@ With this, we have achieved a very similar ergonomics to the described in the **
 
 ## Use case
 
-The main motivation for building graphcom was to serve as the computation engine for [tacos](https://github.com/bortexz/tacos), a library of timeseries technical indicators that are incrementally computed with each new data point, each node keeping it's own accumulated timeseries. Having it extracted into a library instead of a utility inside tacos has other advantages, as indicators can be composed with other types of computations that might not be timeseries-related, or are outside the scope of tacos.
+The main motivation for building graphcom was to serve as the computation engine for [tacos](https://github.com/bortexz/tacos), a library of timeseries technical indicators that are incrementally computed with each new data point, each node keeping its own accumulated timeseries. Having it extracted into a library instead of a utility inside tacos has other advantages, as indicators can be composed with other types of computations that might not be timeseries-related, or are outside the scope of tacos.
 
 ## Install
 
@@ -98,7 +98,7 @@ A node without sources, also called `root` nodes. Their use is to introduce new 
 ```
 
 ### Compute node
-A node that has dependencies on other nodes, and computes it's value from its sources. Sources can be other compute-nodes or input-nodes. In the case of input-nodes, the values will be nil if the inputs are not specified as part of the current graph computation.
+A node that has dependencies on other nodes, and computes its value from its sources. Sources can be other compute-nodes or input-nodes. In the case of input-nodes, the values will be `nil` if the inputs are not specified as part of the current graph computation.
 
 ```clojure
 (g/compute-node {:a-source a-source-node}
@@ -141,7 +141,7 @@ To be able to execute a graph, we need a graph processor. Two default processors
 `parallel-processor` Uses a topological sort where each step consists of nodes that can be executed in parallel (all their sources have already been executed), and executes each step using `pmap`.
 
 ### **Context**
-The context glues the graph with a specific processor, the current values, and processor compilations. A context is also immutable, and functions that change it's value return an updated context.
+The context glues the graph with a specific processor, the current values, and processor compilations. A context is also immutable, and functions that change its value return an updated context.
 
 ```Clojure
 ;; Create context
