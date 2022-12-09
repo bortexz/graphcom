@@ -27,12 +27,12 @@ The main motivation for building graphcom was to serve as the computation engine
 
 ### Clojure CLI/deps.edn
 ```clojure
-io.github.bortexz/graphcom {:mvn/version "0.1.1"}
+io.github.bortexz/graphcom {:mvn/version "0.2.0"}
 ```
 
 ### Leiningen/Boot
 ```clojure
-[io.github.bortexz/graphcom "0.1.1"]
+[io.github.bortexz/graphcom "0.2.0"]
 ```
 
 ## Quick Example
