@@ -67,13 +67,13 @@
 
     (testing "Exception paths is correct"
       (let [i (g/input-node)
-            c (g/compute-node {:input i} (fn [_ _] (throw (Exception. ""))))
+            c (g/compute-node {:input i} (fn [_ _] (throw (ex-info "" {}))))
             c1 (g/compute-node {:source c} (fn [_ _]))
             c2 (g/compute-node {:source c} (fn [_ _]))
             c3 (g/compute-node {:c1 c1 :c2 c2} (fn [_ _]))
             ctx (g/context (g/graph {:input i :compute c3}))
             ex-paths (try (g/process ctx {:input true})
-                          (catch Exception e
+                          (catch #?(:clj Exception :cljs js/Error) e
                             (:paths (ex-data e))))]
         (is (true? (contains? ex-paths [:compute :c1 :source])))
         (is (true? (contains? ex-paths [:compute :c2 :source])))))))

@@ -265,7 +265,7 @@
   (try (-compute node
                  (get values (-id node))
                  (-sources-values node values inputs))
-       (catch Exception e 
+       (catch #?(:clj Exception :cljs :default) e 
          (throw (ex-info "Exception computing node"
                          {:paths (labelled-paths graph (-id node))}
                          e)))))
